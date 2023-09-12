@@ -1,2 +1,5 @@
+sumstatsTools.egg-info
+
+dist/*
 env/*
 src/sumstatsTools/core/__pycache__/*
