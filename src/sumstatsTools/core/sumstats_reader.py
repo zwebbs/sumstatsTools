@@ -10,13 +10,7 @@
 # -----------------------------------------------------------------------------
 
 from itertools import islice
-from typing import Tuple, List, TypeVar, Callable, Union, Any, BinaryIO
-
-# custom types 
-# -----------------------------------------------------------------------------
-
-T = TypeVar('T')
-Container = Union[Tuple[Any], List[Any]]
+from typing import Tuple, List, Callable, BinaryIO
 
 
 # primitive function definitions
