@@ -11,13 +11,24 @@
 # -----------------------------------------------------------------------------
 
 import argparse
+import sumstatsTools.core.sumstats_ops as ssop
 from json import load
+from multiprocessing import Pool
+from sumstatsTools.core.vcf import write_vcf_header
+from sumstatsTools.core.variant import generate_variant_key
+from pprint import pprint
+
+# globals
+# -----------------------------------------------------------------------------
+
+BATCH_SIZE = 1000
+POOL = Pool()
 
 
 # MAIN execution routine
 # -----------------------------------------------------------------------------
 
-if __name__ == "__main__":
+def main():
 
     # build command line parser
     # -------------------------------------------------------------------------
@@ -35,18 +46,66 @@ if __name__ == "__main__":
     parser.add_argument("sumstats_file", type=str, help="summary stats file to convert")
     parser.add_argument("metadata", type=str, help="metadata JSON file")
     parser.add_argument("-o", "--output", type=str, help="name of output vcf", default="out.vcf")
+    parser.add_argument("--chr-convert", type=str, default='none', choices=['none','ucsc','simple'],
+                        help='convert chroms to ucsc style [chr1], or simple style [1]')
 
     # parse user arguments
     args = parser.parse_args()
 
 
-    # read in the metadata json file and create a dictionary
+    # open sumstats file to read, grab header of the file, and prepare batch reader
+    # -------------------------------------------------------------------------
+
+    sstobj = open(args.sumstats_file, 'rb')
+    sstheader = ssop.dec_utf8_and_tokenize(sstobj.readline())
+    sst_reader_f = ssop.sumstats_reader(sstobj, BATCH_SIZE)
+
+
+    # read metadata file and parse json to dict
     # -------------------------------------------------------------------------
 
     with open(args.metadata, 'r') as jobj:
         metadata = load(jobj)
+        # TODO: validate metadata from JSON schema
+        varkey = generate_variant_key(metadata['columns'], sstheader)
+    
+
+    # open vcf file to write, create header using information from the metadata
+    # -------------------------------------------------------------------------
+
+    vcfobj = open(args.output, 'w')
+    write_vcf_header(vcfobj, metadata)
 
 
+    # read in batches of variants, convert them to Variant objects, and write to vcf
+    # -------------------------------------------------------------------------
+
+    # preprocess initial batch, and enter loop. 
+    batch = sst_reader_f()
+    batchproc = ssop.preprocess_lines(batch, POOL.map, ssop.dec_utf8_and_tokenize)
+
+    pprint(batchproc)
+
+    # check for sumstats_file EOF
+    while batchproc is not ():
+
+        # convert to variant objects
+        vars = ssop.generate_variants(batchproc, varkey, args.chr_convert, map)
+        pprint(vars)
+
+        # write to vcf
+
+
+        # get next batch and preprocess 
+        batch = sst_reader_f()
+        batchproc = ssop.preprocess_lines(batch, POOL.map, ssop.dec_utf8_and_tokenize)
+
+
+    # close open file connections
+    # -------------------------------------------------------------------------
+
+    sstobj.close()
+    vcfobj.close()
 
 
 
