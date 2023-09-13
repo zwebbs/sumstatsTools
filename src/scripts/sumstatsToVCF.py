@@ -13,10 +13,11 @@
 import argparse
 import sumstatsTools.core.sumstats_ops as ssop
 from json import load
+from jsonschema import validate
 from multiprocessing import Pool
-from sumstatsTools.core.vcf import write_vcf_header
+from sumstatsTools.core.vcf import write_vcf_header, write_vcf_record
 from sumstatsTools.core.variant import generate_variant_key
-from pprint import pprint
+
 
 # globals
 # -----------------------------------------------------------------------------
@@ -24,6 +25,39 @@ from pprint import pprint
 BATCH_SIZE = 1000
 POOL = Pool()
 
+METADATA_SCH = {
+    "type" : "object",
+    "properties" : {
+        "study" : {
+            "type" : "object",
+            "properties": {
+                "doi" : {"type" : "string"},
+                "genome_build" : {"type" : "string"},
+                "phenotype" : {"type" : "string"}
+            },
+            "required" : ["doi", "genome_build", "phenotype"],
+            "additionalProperties" : True
+        },
+        "columns" : {
+            "type" : "object",
+            "properties" : {
+                "chrom" : {"type" : ["string", "null"]},
+                "pos" : {"type" : ["string", "null"]},
+                "id" : {"type" : ["string", "null"]},
+                "eff_allele" : {"type" : ["string", "null"]},
+                "other_allele" : {"type" : ["string","null"]},
+                "beta" : {"type" : ["string","null"]},
+                "beta_se" : {"type" : ["string","null"]},
+                "zscore" : {"type" : ["string","null"]},
+                "pval" : {"type" : ["string","null"]},
+                "logp" : {"type" : ["string","null"]}
+            },
+            "required" : ["chrom", "pos", "id", "eff_allele", "other_allele", "beta", "zscore", "pval", "logp"],
+            "additionalProperties" : False
+        }
+    },
+    "required" : ["study", "columns"]
+}
 
 # MAIN execution routine
 # -----------------------------------------------------------------------------
@@ -66,7 +100,7 @@ def main():
 
     with open(args.metadata, 'r') as jobj:
         metadata = load(jobj)
-        # TODO: validate metadata from JSON schema
+        validate(instance=metadata, schema=METADATA_SCH)
         varkey = generate_variant_key(metadata['columns'], sstheader)
     
 
@@ -84,17 +118,14 @@ def main():
     batch = sst_reader_f()
     batchproc = ssop.preprocess_lines(batch, POOL.map, ssop.dec_utf8_and_tokenize)
 
-    pprint(batchproc)
-
     # check for sumstats_file EOF
-    while batchproc is not ():
+    while batchproc != ():
 
         # convert to variant objects
-        vars = ssop.generate_variants(batchproc, varkey, args.chr_convert, map)
-        pprint(vars)
+        vars = ssop.generate_variants(batchproc, varkey, args.chr_convert, POOL.map)
 
-        # write to vcf
-
+        # write to vcf (should not be done using multiprocessing)
+        [write_vcf_record(var=var, fobj=vcfobj) for var in vars]
 
         # get next batch and preprocess 
         batch = sst_reader_f()
