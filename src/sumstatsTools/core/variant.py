@@ -9,7 +9,7 @@
 # -----------------------------------------------------------------------------
 
 from math import erf, sqrt, log10, copysign
-from typing import Tuple, Dict, Union, Callable
+from typing import Tuple, List, Dict, Union, Literal
 
 
 # object defintitions
@@ -94,34 +94,37 @@ def compute_pval_logpval(variant: Variant) -> None:
 # this key can be passed to other functions to then generate Variant objects 
 # efficiently through index lookups.
 def generate_variant_key(name_map: Dict[str,Union[str,None]],
-                         names: Tuple[str,...]) -> Dict[str, Callable[[Tuple[str,...]],str]]:
+                         names: Tuple[str,...]) -> List[Union[int,Literal['.']]]:
 
-    # compile and return the dictionary of access functions
-    return {
-        "chrom": (lambda x: x[names.index(name_map["chrom"])] if name_map["chrom"] else '.'),
-        "pos": (lambda x: x[names.index(name_map["pos"])] if name_map["pos"] else '.'),
-        "id": (lambda x: x[names.index(name_map["id"])] if name_map["id"] else '.'),
-        "eff_allele": (lambda x: x[names.index(name_map["eff_allele"])] if name_map["eff_allele"] else '.'),
-        "other_allele": (lambda x: x[names.index(name_map["other_allele"])] if name_map["other_allele"] else '.'),
-        "beta": (lambda x: x[names.index(name_map["beta"])] if name_map["beta"] else '.'),
-        "beta_se": (lambda x: x[names.index(name_map["beta_se"])] if name_map["beta_se"] else '.'),
-        "zscore": (lambda x: x[names.index(name_map["zscore"])] if name_map["zscore"] else '.'),
-        "pval": (lambda x: x[names.index(name_map["pval"])] if name_map["pval"] else '.'),
-        "logp": (lambda x: x[names.index(name_map["logp"])] if name_map["logp"] else '.'),
-    }
-
+    indices: List[Union[int, Literal['.']]] = []
+    for key in name_map.keys():
+        try:
+            ind = names.index(name_map[key])
+        except ValueError:
+            ind = '.'
+        
+        indices.append(ind)
+    return indices
+    
 
 # define a function that creates a Variant object from a tuple of tokens and a variant key dictionary
 # which provides accessor functions based on the positions of columns passed in the original sumstats file
 # the function also attempts to compute a zscore and pvalue for the variant if its missing but the necessary
 # information is provided : (beta and se)
 def variant_from_tokens(tokens: Tuple[str,...],
-                        var_key: Dict[str,Callable[[Tuple[str,...]],str]],
+                        var_key: List[Union[int,Literal['.']]],
                         chrom_convert: Union[str,None]) -> Variant:
     
     # generate the variant object. run computations on zscore and pvalue
-    args: Dict[str,str] = {k : v(tokens) for k,v in var_key.items()}
-    var : Variant = Variant(**args)
+    args: List[str] = []
+    for ind in var_key:
+        if ind != '.':
+            args.append(tokens[ind])
+        else:
+            args.append('.')
+
+    var : Variant = Variant(*args)
+    
     compute_zscore(var)
     compute_pval_logpval(var)
 
