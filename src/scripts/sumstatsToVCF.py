@@ -11,14 +11,14 @@
 # -----------------------------------------------------------------------------
 
 import argparse
-import sumstatsTools.core.sumstats_ops as ssop
+import sumstatstools.core.sumstats_ops as ssop
 import time
 from json import load
 from jsonschema import validate
 from multiprocessing import Pool
-from sumstatsTools.core.contigs import Contig, generate_contigs
-from sumstatsTools.core.vcf import write_vcf_header, write_vcf_record
-from sumstatsTools.core.variant import generate_variant_key
+from sumstatstools.core.contigs import Contig, generate_contigs
+from sumstatstools.core.vcf import write_vcf_header, write_vcf_record
+from sumstatstools.core.variant import generate_variant_key
 from typing import List
 
 # globals
