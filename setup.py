@@ -10,7 +10,7 @@ with open("README.md", 'r', encoding='utf-8') as fobj:
 
 setuptools.setup(
     name="sumstatsTools",
-    version="0.1.0.0",
+    version="0.1.2.0",
     author="Zach Weber",
     author_email="zach.weber.813@gmail.com",
     description="command line tools for working with GWAS summary stats",

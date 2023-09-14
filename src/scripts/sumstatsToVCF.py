@@ -12,12 +12,14 @@
 
 import argparse
 import sumstatsTools.core.sumstats_ops as ssop
+import time
 from json import load
 from jsonschema import validate
 from multiprocessing import Pool
+from sumstatsTools.core.contigs import Contig, generate_contigs
 from sumstatsTools.core.vcf import write_vcf_header, write_vcf_record
 from sumstatsTools.core.variant import generate_variant_key
-
+from typing import List
 
 # globals
 # -----------------------------------------------------------------------------
@@ -62,7 +64,10 @@ METADATA_SCH = {
 # MAIN execution routine
 # -----------------------------------------------------------------------------
 
-def main():
+def main() -> None:
+
+    # start timer for program runtime
+    start = time.time()
 
     # build command line parser
     # -------------------------------------------------------------------------
@@ -77,8 +82,9 @@ def main():
     
     # configure command line parser
     parser = argparse.ArgumentParser(prog="sumstatsToVCF", description=desc)
-    parser.add_argument("sumstats_file", type=str, help="summary stats file to convert")
     parser.add_argument("metadata", type=str, help="metadata JSON file")
+    parser.add_argument("chrom_sizes", type=str, help="ucsc style chrom sizes file")
+    parser.add_argument("sumstats_file", type=str, help="summary stats file to convert")
     parser.add_argument("-o", "--output", type=str, help="name of output vcf", default="out.vcf")
     parser.add_argument("--chr-convert", type=str, default='none', choices=['none','ucsc','simple'],
                         help='convert chroms to ucsc style [chr1], or simple style [1]')
@@ -92,10 +98,10 @@ def main():
 
     sstobj = open(args.sumstats_file, 'rb')
     sstheader = ssop.dec_utf8_and_tokenize(sstobj.readline())
-    sst_reader_f = ssop.sumstats_reader(sstobj, BATCH_SIZE)
+    sst_reader_f = ssop.lines_reader(sstobj, BATCH_SIZE)
 
 
-    # read metadata file and parse json to dict
+    # read metadata file and parse json to dict the validate and get column key
     # -------------------------------------------------------------------------
 
     with open(args.metadata, 'r') as jobj:
@@ -104,11 +110,28 @@ def main():
         varkey = generate_variant_key(metadata['columns'], sstheader)
     
 
+    # read chrom sizes file, generate contigs objects 
+    # -------------------------------------------------------------------------
+
+    contigs: List[Contig] = []
+
+    with open(args.chrom_sizes, 'rb') as chrobj:
+        contig_reader_f = ssop.lines_reader(chrobj, BATCH_SIZE)
+        linesbatch = contig_reader_f()
+        contigspreproc = ssop.preprocess_lines(linesbatch, POOL.map, ssop.dec_utf8_and_tokenize)
+
+        while contigspreproc != ():
+            contigsbatch = generate_contigs(contigspreproc, metadata["study"]["genome_build"], POOL.map)
+            contigs.extend(contigsbatch)
+
+            linesbatch = contig_reader_f()
+            contigspreproc = ssop.preprocess_lines(linesbatch, POOL.map, ssop.dec_utf8_and_tokenize)
+
     # open vcf file to write, create header using information from the metadata
     # -------------------------------------------------------------------------
 
     vcfobj = open(args.output, 'w')
-    write_vcf_header(vcfobj, metadata)
+    write_vcf_header(vcfobj, metadata, contigs)
 
 
     # read in batches of variants, convert them to Variant objects, and write to vcf
@@ -137,6 +160,14 @@ def main():
 
     sstobj.close()
     vcfobj.close()
+
+    # print success message to user
+    # -------------------------------------------------------------------------
+    
+    # stop timer on runtime
+    end = time.time()
+    print(f"Summary Stats File Converted to VCF: Minutes Elapsed: {(end-start)/60.0}")
+    
 
 
 

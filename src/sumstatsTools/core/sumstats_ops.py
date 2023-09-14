@@ -50,12 +50,12 @@ def dec_ascii_and_tokenize(binary_line: bytes, delim: str = '\t') -> Tokens:
 #  high-level function definitions
 # -----------------------------------------------------------------------------
 
-# define sumstats_reader function that takes in a python file object
+# define lines_reader function that takes in a python file object
 # and a batch size and returns a callable function for that batch size on the
 # passed file. sumstats_reader(..., batch size=1) generates a function which
 # returns individual lines (in binary representation) while batch size = 100
 # returns 100 lines at a time. outputs need to be decoded ('utf-8) or ('ascii')
-def sumstats_reader(file_object: BinaryIO, batch_size: int = 1) -> Callable[[],Tuple[bytes,...]]:
+def lines_reader(file_object: BinaryIO, batch_size: int = 1) -> Callable[[],Tuple[bytes,...]]:
     return lambda: tuple(islice(file_object, batch_size))
 
 
