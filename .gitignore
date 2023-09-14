@@ -1,5 +1,8 @@
-sumstatsTools.egg-info
+sumstatstools.egg-info
+src/sumstatsTools.egg-info
 test/AF_HRC_GWAS_ALLv11*
 dist/*
 env/*
-src/sumstatsTools/core/__pycache__/*
+src/sumstatstools/core/__pycache__/*
+src/sumstatstools/__pycache__/*
+src/scripts/__pycache__/*

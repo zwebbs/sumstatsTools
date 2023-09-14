@@ -11,15 +11,12 @@
 # -----------------------------------------------------------------------------
 
 import argparse
-import sumstatstools.core.io.readers as readers
+import sumstatstools.core.sumstats_ops as ssop
 import time
 from json import load
 from jsonschema import validate
 from multiprocessing import Pool
-from sumstatstools.core.contig import Contig
-
-
-
+from sumstatstools.core.contigs import Contig, generate_contigs
 from sumstatstools.core.vcf import write_vcf_header, write_vcf_record
 from sumstatstools.core.variant import generate_variant_key
 from typing import List
@@ -100,8 +97,8 @@ def main() -> None:
     # -------------------------------------------------------------------------
 
     sstobj = open(args.sumstats_file, 'rb')
-    sstheader = readers.dec_utf8_and_tokenize(sstobj.readline())
-    sst_reader_f = readers.lines_reader(sstobj, BATCH_SIZE)
+    sstheader = ssop.dec_utf8_and_tokenize(sstobj.readline())
+    sst_reader_f = ssop.lines_reader(sstobj, BATCH_SIZE)
 
 
     # read metadata file and parse json to dict the validate and get column key
@@ -112,35 +109,6 @@ def main() -> None:
         validate(instance=metadata, schema=METADATA_SCH)
         varkey = generate_variant_key(metadata['columns'], sstheader)
     
-
-    # read chrom sizes file, generate contigs objects 
-    # -------------------------------------------------------------------------
-
-    contigs: List[Contig] = []
-
-    with open(args.chrom_sizes, 'rb') as chrobj:
-        contig_reader_f = ssop.lines_reader(chrobj, BATCH_SIZE)
-        linesbatch = contig_reader_f()
-        contigspreproc = ssop.preprocess_lines(linesbatch, POOL.map, ssop.dec_utf8_and_tokenize)
-
-        while contigspreproc != ():
-            contigsbatch = generate_contigs(contigspreproc, metadata["study"]["genome_build"], POOL.map)
-            contigs.extend(contigsbatch)
-
-            linesbatch = contig_reader_f()
-            contigspreproc = ssop.preprocess_lines(linesbatch, POOL.map, ssop.dec_utf8_and_tokenize)
-
-
-
-
-
-
-
-
-##############################################################################
-
-
-
 
     # read chrom sizes file, generate contigs objects 
     # -------------------------------------------------------------------------
