@@ -7,8 +7,11 @@
 # library imports
 # -----------------------------------------------------------------------------
 
+import sys
+from datetime import date
 from functools import partial
-from typing import Tuple, Dict, Union
+from pathlib import Path
+from typing import Tuple, Dict, Union, TextIO
 from .custom_types import BinLines, MapF, Decoder, Tokens
 from .custom_types import VariantsT, ContigsT
 from .io import decode_lines, filter_header_lines, tokenize
@@ -22,6 +25,27 @@ from .variant import Variant, InfoT
 EmptySet = Tuple[None,...]
 MaybeVariantsT = Union[VariantsT,EmptySet]
 MaybeContigsT = Union[ContigsT, EmptySet]
+
+
+# constants
+# -----------------------------------------------------------------------------
+
+HEADER_TOP = (
+    "##fileformat=VCFv4.2",
+    "##fileDate={}",
+    "##source={}",
+    "##reference={}",
+    "##doi={}")
+
+HEADER_BOTTOM=(
+    "##INFO=<ID=BETA,Number=1,Type=Float,Description=\"Effect Size of ALT Variant\">",
+    "##INFO=<ID=SE,Number=1,Type=Float,Description=\"Standard Error of BETA\">",
+    "##INFO=<ID=Z,Number=1,Type=Float,Description=\"Z-score of ALT Variant\">",
+    "##INFO=<ID=P,Number=1,Type=Float,Description=\"P-value of ALT Variant\">",
+    "##INFO=<ID=LOGP,Number=1,Type=Float,Description=\"-1*log10(P) of ALT Variant\">",
+    "##FILTER=<ID=.,Description=\"Not Provided\">",
+    "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO"
+)
 
 
 # primitive function definitions
@@ -68,6 +92,29 @@ def process_vcf_lines(binary_lines: BinLines, mapf: MapF, dec: Decoder,
 
 
 
+
+
+
+
+# define write_vcf_header function which takes as input a file object open in
+# write mode, as well as a metadata dictionary containing the column mappings
+def write_vcf_header(fobj: TextIO, genome_build: str, doi: str, contigs: ContigsT) -> None:
+    # format the top header string
+    program = str(Path(sys.argv[0]).stem)
+    fmtdtop = ("\n".join(HEADER_TOP).format(date.today(),program,genome_build,doi) + '\n')
+    
+    # generate the midsection string of the header
+    middle = [f"##contig=<ID={c.get_id()},length={str(c.get_length())},assembly={c.get_genome_build()}>" for c in contigs]
+    fmtdmiddle = ('\n'.join(middle) + "\n")
+    
+    # format the bottom header string
+    fmtdbottom: str = ('\n'.join(HEADER_BOTTOM) + '\n')
+
+    # write the header to the file
+    fobj.write(fmtdtop)
+    fobj.write(fmtdmiddle)
+    fobj.write(fmtdbottom)
+    return
 
 
 
