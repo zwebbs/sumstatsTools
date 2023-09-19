@@ -8,7 +8,6 @@
 # library imports
 # -----------------------------------------------------------------------------
 
-from dataclasses import dataclass, field
 from math import inf, copysign, erf, sqrt, log10
 from typing import Tuple, Union
 
@@ -64,42 +63,3 @@ def compute_logpvalue(pval: PValue) -> LogPValue:
         return (-1.0 * log10(pval[0]),)
 
 
-# object definitions
-# -----------------------------------------------------------------------------
-
-# define a SummaryStats object which is a data class that holds the 
-# suite of commonly collected statistical measurements from a GWAS study
-@dataclass
-class SummaryStats:
-    beta: Beta
-    stderr: StdErr
-    effect: Effect = field(init=False)
-    zscore: ZScore
-    pvalue: PValue
-    logp: LogPValue
-
-    def __post_init__(self) -> None:
-        self.effect = (self.beta, self.stderr)
-
-
-# function definitions
-# -----------------------------------------------------------------------------
-
-# define a function that takes a SummaryStats object and returns 
-# another SummaryStats object with as many of the computable statistics 
-# calculated as possible
-def complete_summarystats(sumstats: SummaryStats) -> SummaryStats:
-    
-    # if the attributes in the passed SummaryStats object are empty, compute them from Effect values
-    zscore = (compute_zscore(sumstats.effect) if sumstats.zscore == (None,) else sumstats.zscore)
-    pvalue = (compute_pvalue(zscore) if sumstats.pvalue == (None,) else sumstats.pvalue)
-    logp = (compute_logpvalue(pvalue) if sumstats.logp == (None,) else sumstats.logp)
-    
-    # return the new SummaryStats object
-    return SummaryStats(
-        beta=sumstats.beta,
-        stderr=sumstats.stderr,
-        zscore=zscore,
-        pvalue=pvalue,
-        logp=logp
-    )

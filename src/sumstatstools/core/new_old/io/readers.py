@@ -8,12 +8,40 @@
 # -----------------------------------------------------------------------------
 
 from itertools import islice
-from typing import Tuple, Callable, BinaryIO
+from typing import Tuple, Callable, Union, List, Any, BinaryIO
 
 
-# type definitions
+# type aliases
 # -----------------------------------------------------------------------------
 
+Tokens = Tuple[str,...]
+Container = Union[List[Any],Tuple[Any,...]]
+Map_F = Callable[[Callable[[Any],Any],Container],Any]
+
+
+# primitive function definitions
+# -----------------------------------------------------------------------------
+
+# define decoder functions to convert bytes to strings
+def dec_utf8(binary_line: bytes) -> str:
+    return binary_line.decode('utf-8')
+ 
+def dec_ascii(binary_line: bytes) -> str:
+    return binary_line.decode('ascii')
+
+
+# define a tokenize function that strips excess whitespace and splits
+# a text line based on passed delimiter
+def tokenize(line: str, delim: str = '\t') -> Tokens:
+    return tuple(line.strip().split())
+
+
+# define functions that compose the decoders and the tokenizer
+def dec_utf8_and_tokenize(binary_line: bytes, delim:str = '\t') -> Tokens:
+    return tokenize(dec_utf8(binary_line), delim)
+
+def dec_ascii_and_tokenize(binary_line: bytes, delim: str = '\t') -> Tokens:
+    return tokenize(dec_ascii(binary_line), delim)
 
 
 # function definitions
