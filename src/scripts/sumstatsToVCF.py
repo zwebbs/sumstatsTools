@@ -11,17 +11,24 @@
 import argparse
 import time
 import sumstatstools.core.io as io
+from functools import partial
 from json import load
 from jsonschema import validate
 from multiprocessing import Pool
 from typing import Union, List, Tuple, Literal
 from sumstatstools.core.custom_types import BinLines, Tokens
 from sumstatstools.core.contig import Contig
-from sumstatstools.core.vcf import write_vcf_header
+from sumstatstools.core.vcf import write_vcf_header, write_vcf_record
+from sumstatstools.core.variant import variant_from_tokens
+
+
 # constants
 # -----------------------------------------------------------------------------
 
 BATCH_SIZE = 5000  # number of sumstats records to read in at a time
+VARIANT_CORE_ATTRS = ['chrom','pos', 'id', 'other_allele', 'eff_allele']
+VARIANT_STAT_ATTRS = ['beta', 'beta_se', 'zscore', 'pval', 'logp']
+
 POOL = Pool()
 METADATA_SCH = {
     "type" : "object",
@@ -56,6 +63,12 @@ METADATA_SCH = {
     },
     "required" : ["study", "columns"]
 }
+
+
+# define type aliases
+# -----------------------------------------------------------------------------
+
+Indices = List[Union[int,Literal['.']]]
 
 
 # define functions 
@@ -145,9 +158,46 @@ def main() -> None:
     # generate variants from summary stats file input and write to vcf
     # -------------------------------------------------------------------------
 
+    # get indices for the core variant attributes
+    ind_core: Indices = []
+    for attr in VARIANT_CORE_ATTRS:
+        try:
+            ind=sstheader.index(metadata['columns'][attr])
+            ind_core.append(ind)
+        
+        except ValueError:
+            ind_core.append('.') 
+
+    # get indices for the stats attributes that will be converted to an info dict
+    ind_stat: Indices = []
+    for attr in VARIANT_STAT_ATTRS:
+        try:
+            ind=sstheader.index(metadata['columns'][attr])
+            ind_stat.append(ind)
+        
+        except ValueError:
+            ind_stat.append('.')
 
 
+    # iterate through batches of lines from the sumstats file. preprocess,tokenize 
+    # and convert to variant objects. then write them out to the vcf file.
+    
+    kwargs = {"core_ind" : ind_core,
+              "stat_ind" : ind_stat,
+              "contig_convert" : args.chr_convert, 
+              "contigs_dict" : contigs_dict}
+    
+    sumstats_preproc = preprocess_lines(sst_reader_f())
+    while sumstats_preproc != ():
 
+        # generate variant objects
+        vars = POOL.map(partial(variant_from_tokens, **kwargs),sumstats_preproc)
+
+        # write to VCF
+        [write_vcf_record(vcfobj,v) for v in vars]
+
+        # get next batch
+        sumstats_preproc = preprocess_lines(sst_reader_f())
 
 
 
@@ -158,18 +208,9 @@ def main() -> None:
     vcfobj.close()
 
 
-
-    # get token indices for core variant attributes
+    # print success message to user
     # -------------------------------------------------------------------------
-    attrs = ['chrom','pos', 'id', 'eff_allele', 'other_allele']
-    ind_core: List[Union[int,Literal['.']]] = []
-    for attr in attrs:
-        try:
-            ind=sstheader.index(metadata['columns'][attr])
-            ind_core.append(ind)
-        
-        except ValueError:
-            ind_core.append('.')
-
     
-
+    # stop timer on runtime
+    end = time.time()
+    print(f"Summary Stats File Converted to VCF: Minutes Elapsed: {(end-start)/60.0}")

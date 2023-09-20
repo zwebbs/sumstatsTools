@@ -91,6 +91,16 @@ def process_vcf_lines(binary_lines: BinLines, mapf: MapF, dec: Decoder,
     return tuple(mapf(partial(create_variant, contig_dict=contig_dict), filt_lines_tokens))
 
 
+# define a function which takes a variant and writes it to a vcf file object
+def write_vcf_record(vcfobj: TextIO, variant: Variant) -> None:
+    core_fmtd = (f"{variant.get_contig().get_id()}\t"
+                 f"{variant.get_pos()}\t{variant.get_name()}\t"
+                 f"{variant.get_ref()}\t{variant.get_alt()}\t"
+                 f"{variant.get_qual()}\t{variant.get_filt()}\t")
+    info_fmtd = ';'.join([f"{k}={','.join(map(lambda x:f'{x:.4e}',v))}" for k,v in variant.get_info().items()]) + '\n'
+    vcfobj.write(core_fmtd + info_fmtd)
+
+    return
 
 
 

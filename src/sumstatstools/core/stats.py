@@ -58,7 +58,7 @@ def compute_pvalue(zscore: ZScore) -> PValue:
 def compute_logpvalue(pval: PValue) -> LogPValue:
     if (pval[0] == None): return (None,)
     elif (pval[0] == 0):
-        return (-inf,)
+        return (inf,)
     else:
         return (-1.0 * log10(pval[0]),)
 
