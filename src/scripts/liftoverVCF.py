@@ -113,9 +113,6 @@ def main() -> None:
         unmappedfobj = None
     
 
-    # open unmapped file for writing or specify STDERR to write to
-    # -------------------------------------------------------------------------
-
     # open input VCF file for batch processing
     # -------------------------------------------------------------------------
 
