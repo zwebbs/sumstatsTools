@@ -27,7 +27,7 @@ setuptools.setup(
     package_dir={"":"src"},
     packages=setuptools.find_packages(where="src"),
     python_requires=">=3.8",
-    install_requires=[],
+    install_requires=['liftover==1.1.6'],
     entry_points={'console_scripts': {'sumstatsToVCF=scripts.sumstatsToVCF:main'}}
 )
 
